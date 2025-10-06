@@ -1,0 +1,39 @@
+node_modules/
+dist/
+.env
+.DS_Store
+npm-debug.log
+yarn-error.log
+.vscode/
+.idea/
+coverage/
+*.log
+*.tsbuildinfo
+
+# Ignore local environment files
+.env.local
+.env.*.local
+# Ignore build output
+build/
+out/
+# Ignore dependency directories
+.pnp/
+.pnp.js
+# Ignore IDE specific files
+*.sublime-workspace
+*.sublime-project
+# Ignore OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.swp
+*~
+.npm/
+.cache/
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+# Ignore test coverage directory
+coverage/
