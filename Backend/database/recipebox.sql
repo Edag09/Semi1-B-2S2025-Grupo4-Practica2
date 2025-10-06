@@ -1,3 +1,4 @@
+DROP DATABASE recipebox_db;
 CREATE DATABASE recipebox_db;
 USE recipebox_db;
 
