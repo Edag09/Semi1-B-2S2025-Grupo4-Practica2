@@ -1,23 +1,18 @@
-const mysql = require('mysql2/promise');
-const dotenv = require('dotenv');
-dotenv.config();
+const { sequelize } = require('../models');
 
-let pool;
-
-const getPool = async () => {
-  if (!pool) {
-    pool = mysql.createPool({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT || 3306,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
+const connectDB = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Conexión a la base de datos establecida correctamente');
+    
+    // Sincronizar modelos (solo en desarrollo)
+    // await sequelize.sync({ alter: true }); // Descomentar si quieres que Sequelize actualice las tablas
+    
+    return sequelize;
+  } catch (error) {
+    console.error('❌ Error BD:', error.message);
+    throw error;
   }
-  return pool;
 };
 
-module.exports = { getPool };
+module.exports = { connectDB, sequelize };
