@@ -29,7 +29,7 @@ router.post('/crear', verifyJWT, recipesController.create);
  * @desc    Obtener todas las recetas públicas (con filtros)
  * @access  Public (opcional autenticación para ver privadas propias)
  */
-router.get('/', verifyJWTOptional, recipesController.getAll);
+router.get('/get_all', verifyJWTOptional, recipesController.getAll);
 
 /**
  * @route   GET /recetas/:id

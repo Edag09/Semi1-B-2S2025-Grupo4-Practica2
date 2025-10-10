@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import API_ROUTES from "../Config/apiRoutes";
 
 const FAV_KEY = "favorites_recipes";
 
-// ===== Helpers favoritos (localStorage) =====
+// ===== Helpers favoritos =====
 const getFavorites = () => {
   try {
     return JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
@@ -43,7 +44,6 @@ function HeaderBar({ userSession }) {
         className="flex align-items-center"
         style={{ position: "relative", minHeight: 48 }}
       >
-        {/* Título centrado */}
         <h2
           className="m-0 text-center"
           style={{
@@ -58,12 +58,11 @@ function HeaderBar({ userSession }) {
           RecipeBoxCloud
         </h2>
 
-        {/* Botones a la derecha */}
         <div className="ml-auto flex gap-2">
           <Button
             label="Crear receta"
             icon="pi pi-plus"
-            onClick={() => nav("/nueva", { state: { userSession } })}
+            onClick={() => nav("/nueva")}
             severity="success"
             outlined
             className="p-button-sm"
@@ -71,7 +70,7 @@ function HeaderBar({ userSession }) {
           <Button
             label="Mis recetas"
             icon="pi pi-book"
-            onClick={() => nav("/mis-recetas", { state: { userSession } })}
+            onClick={() => nav("/mis-recetas")}
             severity="info"
             outlined
             className="p-button-sm"
@@ -79,7 +78,7 @@ function HeaderBar({ userSession }) {
           <Button
             label="Favoritas"
             icon="pi pi-heart"
-            onClick={() => nav("/favoritos", { state: { userSession } })}
+            onClick={() => nav("/favoritos")}
             severity="help"
             outlined
             className="p-button-sm"
@@ -141,68 +140,61 @@ function RecipeCard({ recipe, onToggle }) {
 // ======= Página Home =======
 export default function Home() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // ✅ Obtenemos el usuario desde el login o localStorage
-  const userSession =
-    location.state?.userSession ||
-    JSON.parse(localStorage.getItem("userSession") || "{}");
-
-  useEffect(() => {
-    console.log("🏠 Datos del usuario en Home:", userSession);
-  }, [userSession]);
-
-  // Si no hay usuario, redirigimos al login
-  useEffect(() => {
-    if (!userSession?.token || !userSession?.id_usuario) {
-      console.warn("⚠️ No hay sesión activa, redirigiendo al login...");
-      navigate("/");
-    }
-  }, [userSession, navigate]);
-
-  // Recetas demo (públicas)
+  const [userSession, setUserSession] = useState(null);
   const [all, setAll] = useState([]);
   const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  // ✅ Cargar sesión desde localStorage al montar el componente
   useEffect(() => {
-    setAll([
-      {
-        id_receta: 1,
-        titulo: "Pasta al pesto",
-        descripcion: "Fresca y aromática",
-        foto_url: "https://picsum.photos/seed/pesto/400/240",
-        username: "ana",
-      },
-      {
-        id_receta: 2,
-        titulo: "Limonada",
-        descripcion: "Con hierbabuena",
-        foto_url: "https://picsum.photos/seed/limon/400/240",
-        username: "carlos",
-      },
-      {
-        id_receta: 3,
-        titulo: "Tacos de pollo",
-        descripcion: "Con salsa verde",
-        foto_url: "https://picsum.photos/seed/tacos/400/240",
-        username: "luis",
-      },
-      {
-        id_receta: 4,
-        titulo: "Brownies",
-        descripcion: "Chocolate intenso",
-        foto_url: "https://picsum.photos/seed/brownie/400/240",
-        username: "maría",
-      },
-      {
-        id_receta: 5,
-        titulo: "Ensalada César",
-        descripcion: "Clásica y ligera",
-        foto_url: "https://picsum.photos/seed/cesar/400/240",
-        username: "sofi",
-      },
-    ]);
-  }, []);
+    const stored = localStorage.getItem("userSession");
+    if (stored) {
+      try {
+        setUserSession(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem("userSession");
+        navigate("/");
+      }
+    } else {
+      navigate("/");
+    }
+  }, [navigate]);
+
+  // ✅ Cargar recetas solo cuando ya tenemos sesión
+  useEffect(() => {
+    if (!userSession?.token) return;
+
+    const fetchRecipes = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(API_ROUTES.RECIPES.GET_ALL, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userSession.token}`,
+          },
+        });
+
+        const data = await response.json();
+        console.log("📦 Recetas obtenidas:", data);
+
+        if (!response.ok) throw new Error(data.message || "Error al obtener recetas");
+
+        const recetas = Array.isArray(data)
+          ? data
+          : Array.isArray(data.data)
+          ? data.data
+          : [];
+
+        setAll(recetas);
+      } catch (error) {
+        console.error("❌ Error al cargar recetas:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, [userSession]);
 
   // Filtro de búsqueda
   const items = useMemo(() => {
@@ -221,9 +213,17 @@ export default function Home() {
     setAll((prev) => [...prev]); // re-render
   };
 
+  // 🔒 Protección visual si no hay sesión cargada todavía
+  if (!userSession) {
+    return (
+      <div className="flex justify-content-center align-items-center min-h-screen">
+        <p>Cargando sesión...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-2">
-      {/* ✅ Pasamos userSession al Header */}
       <HeaderBar userSession={userSession} />
 
       <div
@@ -250,15 +250,17 @@ export default function Home() {
         </span>
       </div>
 
-      {/* Grid de recetas */}
-      <div className="flex flex-wrap">
-        {items.map((r) => (
-          <RecipeCard key={r.id_receta} recipe={r} onToggle={handleToggle} />
-        ))}
-        {items.length === 0 && (
-          <p className="text-600 m-3">No hay resultados con “{q}”.</p>
-        )}
-      </div>
+      {loading ? (
+        <p className="m-3 text-600">Cargando recetas...</p>
+      ) : all.length === 0 ? (
+        <p className="m-3 text-600">No hay recetas disponibles.</p>
+      ) : (
+        <div className="flex flex-wrap">
+          {items.map((r) => (
+            <RecipeCard key={r.id_receta} recipe={r} onToggle={handleToggle} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

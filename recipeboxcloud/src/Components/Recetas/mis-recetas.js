@@ -50,7 +50,7 @@ function HeaderBar() {
           <Button
             label="Crear receta"
             icon="pi pi-plus"
-            onClick={() => nav("/crear")}
+            onClick={() => nav("/nueva")}
             severity="success"
             outlined
             className="p-button-sm"
