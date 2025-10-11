@@ -166,15 +166,6 @@ export default function Login() {
             Regístrate
           </span>
         </div>
-        <div className="mt-2 text-center" style={{ color: "#6b6b6b" }}>
-          ¿Olvidaste tu contraseña?{" "}
-          <span
-            onClick={() => navigate("/recuperar-password")}
-            style={{ color: "#2e7d32", cursor: "pointer", fontWeight: 600 }}
-          >
-            Recupérala
-          </span>
-        </div>
       </Card>
     </div>
   );
