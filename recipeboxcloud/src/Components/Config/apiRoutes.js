@@ -13,8 +13,8 @@ const API_ROUTES={
     RECIPES:{
         CREATE: 'http://localhost:8080/recetas/crear',
         GET_ALL: 'http://localhost:8080/recetas/get_all',
-        GET_BY_ID: (id) => `/recipes/${id}`,
+        GET_ALL_BY_USER: 'http://localhost:8080/recetas/mis-recetas'
     }
-}
+};
 
 export default API_ROUTES;
