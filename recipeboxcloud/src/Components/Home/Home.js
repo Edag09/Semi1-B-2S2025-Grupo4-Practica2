@@ -5,32 +5,10 @@ import { InputText } from "primereact/inputtext";
 import { useNavigate } from "react-router-dom";
 import API_ROUTES from "../Config/apiRoutes";
 
-const FAV_KEY = "favorites_recipes";
-
-// ===== Helpers favoritos =====
-const getFavorites = () => {
-  try {
-    return JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
-  } catch {
-    return [];
-  }
-};
-const setFavorites = (list) =>
-  localStorage.setItem(FAV_KEY, JSON.stringify(list));
-const isFavorite = (id) => getFavorites().some((r) => r.id_receta === id);
-const toggleFavorite = (recipe) => {
-  const list = getFavorites();
-  const exists = list.some((r) => r.id_receta === recipe.id_receta);
-  const next = exists
-    ? list.filter((r) => r.id_receta !== recipe.id_receta)
-    : [recipe, ...list];
-  setFavorites(next);
-};
 
 // ======= Barra superior =======
 function HeaderBar({ userSession }) {
   const nav = useNavigate();
-
   return (
     <Card
       className="mb-3"
@@ -51,13 +29,11 @@ function HeaderBar({ userSession }) {
             left: "50%",
             transform: "translateX(-50%)",
             color: "#2e7d32",
-            letterSpacing: 0.3,
             fontWeight: 700,
           }}
         >
           RecipeBoxCloud
         </h2>
-
         <div className="ml-auto flex gap-2">
           <Button
             label="Crear receta"
@@ -100,9 +76,7 @@ function HeaderBar({ userSession }) {
 }
 
 // ======= Tarjeta de receta =======
-function RecipeCard({ recipe, onToggle }) {
-  const fav = useMemo(() => isFavorite(recipe.id_receta), [recipe.id_receta]);
-
+function RecipeCard({ recipe, onToggleFavorite }) {
   const header = recipe.foto_url ? (
     <img
       src={recipe.foto_url}
@@ -111,13 +85,15 @@ function RecipeCard({ recipe, onToggle }) {
     />
   ) : null;
 
+  const fav = !!recipe._isFavorite;
+
   const footer = (
     <div className="flex justify-content-between align-items-center">
       <small className="text-600">{recipe.username || "Autor"}</small>
       <Button
         icon={fav ? "pi pi-heart-fill" : "pi pi-heart"}
         label={fav ? "Quitar" : "Favorito"}
-        onClick={() => onToggle(recipe)}
+        onClick={() => onToggleFavorite(recipe, fav)}
         size="small"
         severity={fav ? "danger" : "help"}
         outlined={!fav}
@@ -145,7 +121,7 @@ export default function Home() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ✅ Cargar sesión desde localStorage al montar el componente
+  // ✅ Cargar sesión
   useEffect(() => {
     const stored = localStorage.getItem("userSession");
     if (stored) {
@@ -160,32 +136,61 @@ export default function Home() {
     }
   }, [navigate]);
 
-  // ✅ Cargar recetas solo cuando ya tenemos sesión
+  // ✅ Obtener recetas + verificar si son favoritas
   useEffect(() => {
     if (!userSession?.token) return;
 
     const fetchRecipes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(API_ROUTES.RECIPES.GET_ALL, {
+
+        // 1️⃣ Traer todas las recetas
+        const resp = await fetch(API_ROUTES.RECIPES.GET_ALL, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${userSession.token}`,
           },
         });
 
-        const data = await response.json();
-        console.log("📦 Recetas obtenidas:", data);
+        const raw = await resp.json();
+        if (!resp.ok)
+          throw new Error(raw.message || "Error al obtener recetas");
 
-        if (!response.ok) throw new Error(data.message || "Error al obtener recetas");
-
-        const recetas = Array.isArray(data)
-          ? data
-          : Array.isArray(data.data)
-          ? data.data
+        const recetas = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw.data)
+          ? raw.data
           : [];
 
-        setAll(recetas);
+        // 2️⃣ Verificar si cada receta está en favoritos
+        const checked = await Promise.all(
+          recetas.map(async (r) => {
+            try {
+              const url = API_ROUTES.FAVORITES.VERIFICAR_FAVORITO(r.id_receta);
+              const cResp = await fetch(url, {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${userSession.token}`,
+                },
+              });
+              const cRaw = await cResp.json();
+              console.log(
+                `🔍 Verificando receta ${r.id_receta}:`,
+                cRaw?.data?.is_favorite
+              );
+              const isFav = !!cRaw?.data?.is_favorite;
+              return { ...r, _isFavorite: isFav };
+            } catch (err) {
+              console.warn(
+                `⚠️ No se pudo verificar favorito para receta ${r.id_receta}:`,
+                err
+              );
+              return { ...r, _isFavorite: false };
+            }
+          })
+        );
+
+        setAll(checked);
       } catch (error) {
         console.error("❌ Error al cargar recetas:", error);
       } finally {
@@ -196,7 +201,7 @@ export default function Home() {
     fetchRecipes();
   }, [userSession]);
 
-  // Filtro de búsqueda
+  // ✅ Filtro de búsqueda
   const items = useMemo(() => {
     const text = q.trim().toLowerCase();
     if (!text) return all;
@@ -208,12 +213,57 @@ export default function Home() {
     );
   }, [all, q]);
 
-  const handleToggle = (recipe) => {
-    toggleFavorite(recipe);
-    setAll((prev) => [...prev]); // re-render
+  // ✅ Agregar / quitar favorito
+  const handleToggleFavorite = async (recipe, isFavNow) => {
+    if (!userSession?.token) {
+      alert("Inicia sesión para gestionar favoritos");
+      return;
+    }
+
+    const url = isFavNow
+      ? API_ROUTES.FAVORITES.QUITAR_FAVORITO(recipe.id_receta)
+      : API_ROUTES.FAVORITES.AGREGAR_FAVORITO(recipe.id_receta);
+    const method = isFavNow ? "DELETE" : "POST";
+
+    try {
+      // Reflejar de inmediato (optimista)
+      setAll((prev) =>
+        prev.map((r) =>
+          r.id_receta === recipe.id_receta
+            ? { ...r, _isFavorite: !isFavNow }
+            : r
+        )
+      );
+
+      const resp = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userSession.token}`,
+        },
+        body: isFavNow
+          ? null
+          : JSON.stringify({ id_receta: recipe.id_receta }),
+      });
+
+      const raw = await resp.json();
+      if (!resp.ok)
+        throw new Error(raw.message || "Error al actualizar favorito");
+
+      console.log("✅ Estado de favorito actualizado:", raw);
+    } catch (err) {
+      console.error("❌ Error al actualizar favorito:", err);
+      // Revertir si falla
+      setAll((prev) =>
+        prev.map((r) =>
+          r.id_receta === recipe.id_receta
+            ? { ...r, _isFavorite: isFavNow }
+            : r
+        )
+      );
+    }
   };
 
-  // 🔒 Protección visual si no hay sesión cargada todavía
   if (!userSession) {
     return (
       <div className="flex justify-content-center align-items-center min-h-screen">
@@ -252,12 +302,16 @@ export default function Home() {
 
       {loading ? (
         <p className="m-3 text-600">Cargando recetas...</p>
-      ) : all.length === 0 ? (
+      ) : items.length === 0 ? (
         <p className="m-3 text-600">No hay recetas disponibles.</p>
       ) : (
         <div className="flex flex-wrap">
           {items.map((r) => (
-            <RecipeCard key={r.id_receta} recipe={r} onToggle={handleToggle} />
+            <RecipeCard
+              key={r.id_receta}
+              recipe={r}
+              onToggleFavorite={handleToggleFavorite}
+            />
           ))}
         </div>
       )}
