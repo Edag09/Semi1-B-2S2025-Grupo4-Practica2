@@ -50,6 +50,6 @@ app.use((_, res) => res.status(404).json({ error: 'Recurso no encontrado' }));
 
 
 // Arranque
-app.listen(PORT, () => {
+app.listen(PORT,"0.0.0.0", () => {
   console.log(`🚀 Backend listo en ${PORT}`);
 });
