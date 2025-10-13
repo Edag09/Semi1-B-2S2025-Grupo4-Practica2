@@ -1,8 +1,8 @@
 const API_ROUTES={
 
     AUTH: {
-        LOGIN: 'http://4.155.115.159/auth/login',
-        REGISTER: 'http://4.155.115.159/auth/register',
+        LOGIN: 'http://4.155.115.159:8080/auth/login',
+        REGISTER: 'http://4.155.115.159:8080/auth/register',
     },
 
     AZURE_IMAGES:{
@@ -11,16 +11,16 @@ const API_ROUTES={
     },
 
     RECIPES:{
-        CREATE: 'http://4.155.115.159/recetas/crear',
-        GET_ALL: 'http://4.155.115.159/recetas/get_all',
-        GET_ALL_BY_USER: 'http://4.155.115.159/recetas/mis-recetas',
+        CREATE: 'http://4.155.115.159:8080/recetas/crear',
+        GET_ALL: 'http://4.155.115.159:8080/recetas/get_all',
+        GET_ALL_BY_USER: 'http://4.155.115.159:8080/recetas/mis-recetas',
     },
 
     FAVORITES:{
-        GET_FAVORITES: 'http://4.155.115.159/favoritos/mis-favoritas',
-        AGREGAR_FAVORITO:  (id_receta) => `http://4.155.115.159/favoritos/add/${id_receta}`,
-        QUITAR_FAVORITO: (id_receta) => `http://4.155.115.159/favoritos/remove/${id_receta}`,
-        VERIFICAR_FAVORITO: (id_receta) => `http://4.155.115.159/favoritos/check/${id_receta}`,
+        GET_FAVORITES: 'http://4.155.115.159:8080/favoritos/mis-favoritas',
+        AGREGAR_FAVORITO:  (id_receta) => `http://4.155.115.159:8080/favoritos/add/${id_receta}`,
+        QUITAR_FAVORITO: (id_receta) => `http://4.155.115.159:8080/favoritos/remove/${id_receta}`,
+        VERIFICAR_FAVORITO: (id_receta) => `http://4.155.115.159:8080/favoritos/check/${id_receta}`,
     }
 };
 
