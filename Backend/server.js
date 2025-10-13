@@ -14,7 +14,7 @@ const commentsRoutes = require('./routes/comments.routes.js');
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 80;
 
 // Middlewares
 app.use(cors());
