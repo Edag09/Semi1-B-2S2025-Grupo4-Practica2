@@ -6,17 +6,19 @@ import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { useNavigate } from "react-router-dom";
+import API_ROUTES from "../Config/apiRoutes";
 
 export default function Login() {
-  const [usuario, setUsuario] = useState("");     // usuario o email
-  const [contrasena, setContrasena] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const toast = useRef(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!usuario || !contrasena) {
+    if (!email || !password) {
       toast.current.show({
         severity: "warn",
         summary: "Campos requeridos",
@@ -25,20 +27,53 @@ export default function Login() {
       return;
     }
 
+    setLoading(true);
+
     try {
-      console.log({ userOrEmail: usuario, password: contrasena });
+      const payload = { email: email.trim(), password: password.trim() };
+
+      const response = await fetch(API_ROUTES.AUTH.LOGIN, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      console.log("🔍 Respuesta del backend LOGIN:", result);
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Credenciales inválidas");
+      }
+
+      // ✅ Extraer los datos reales
+      const { usuario, token } = result.data;
+
+      // ✅ Crear objeto de sesión
+      const userSession = {
+        ...usuario,
+        token, // agregamos el token al mismo objeto
+      };
+
+      // ✅ Guardar todo en localStorage
+      localStorage.setItem("userSession", JSON.stringify(userSession));
+
       toast.current.show({
         severity: "success",
         summary: "¡Bienvenido!",
-        detail: "Login exitoso",
+        detail: `Hola ${usuario.username}!`,
       });
-      setTimeout(() => navigate("/"), 500);
+
+      // ✅ Redirigir a Home y pasar datos
+      setTimeout(() => navigate("/home", { state: { userSession } }), 1000);
     } catch (err) {
+      console.error("❌ Error de autenticación:", err);
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: err?.response?.data?.error || "Credenciales inválidas",
+        summary: "Error de inicio de sesión",
+        detail: err.message || "No se pudo conectar con el servidor",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,7 +81,6 @@ export default function Login() {
     <div
       className="flex justify-content-center align-items-center min-h-screen p-3"
       style={{
-        // Fondo alegre tipo recetario: degradé “limón & aguacate”
         background:
           "linear-gradient(135deg, #fff8e1 0%, #e8f5e9 40%, #dcedc8 100%)",
       }}
@@ -76,42 +110,44 @@ export default function Login() {
           {/* Usuario o correo */}
           <span className="p-float-label">
             <InputText
-              id="usuario"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full"
+              disabled={loading}
               style={{
                 background: "#F9FFF2",
                 borderColor: "#aed581",
               }}
             />
-            <label htmlFor="usuario">Usuario o correo</label>
+            <label htmlFor="email">Usuario o correo</label>
           </span>
 
           {/* Contraseña */}
           <span className="p-float-label">
             <Password
-              id="contrasena"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               feedback={false}
               toggleMask
               className="w-full"
+              disabled={loading}
               inputStyle={{
                 background: "#F9FFF2",
                 borderColor: "#aed581",
               }}
             />
-            <label htmlFor="contrasena">Contraseña</label>
+            <label htmlFor="password">Contraseña</label>
           </span>
 
           {/* Botón */}
           <Button
             type="submit"
-            label="Entrar"
-            icon="pi pi-sign-in"
+            label={loading ? "Conectando..." : "Entrar"}
+            icon={loading ? "pi pi-spin pi-spinner" : "pi pi-sign-in"}
             className="w-full"
-            onClick={() => navigate("/home")}
+            disabled={loading}
             style={{
               background: "#66bb6a",
               border: "none",
@@ -120,7 +156,7 @@ export default function Login() {
           />
         </form>
 
-        {/* Footer links */}
+        {/* Footer */}
         <div className="mt-4 text-center" style={{ color: "#6b6b6b" }}>
           ¿Aún no tienes cuenta?{" "}
           <span
@@ -128,15 +164,6 @@ export default function Login() {
             style={{ color: "#2e7d32", cursor: "pointer", fontWeight: 600 }}
           >
             Regístrate
-          </span>
-        </div>
-        <div className="mt-2 text-center" style={{ color: "#6b6b6b" }}>
-          ¿Olvidaste tu contraseña?{" "}
-          <span
-            onClick={() => navigate("/recuperar-password")}
-            style={{ color: "#2e7d32", cursor: "pointer", fontWeight: 600 }}
-          >
-            Recupérala
           </span>
         </div>
       </Card>

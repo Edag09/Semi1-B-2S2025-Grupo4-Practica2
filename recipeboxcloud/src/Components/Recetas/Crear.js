@@ -1,27 +1,16 @@
-// src/pages/Crear.js
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
 import { useNavigate } from "react-router-dom";
+import API_ROUTES from "../Config/apiRoutes";
 
-const USER_RECIPES_KEY = "user_recipes";
-
-// Helpers
-const getMyRecipes = () => {
-  try {
-    return JSON.parse(localStorage.getItem(USER_RECIPES_KEY) || "[]");
-  } catch {
-    return [];
-  }
-};
-const saveMyRecipes = (list) => localStorage.setItem(USER_RECIPES_KEY, JSON.stringify(list));
-
-// ======= Barra superior =======
+// ======= Barra superior (reutilizada de Home) =======
 function HeaderBar() {
   const nav = useNavigate();
+
   return (
     <Card
       className="mb-3"
@@ -31,7 +20,10 @@ function HeaderBar() {
         padding: "0.75rem 1rem",
       }}
     >
-      <div className="flex align-items-center" style={{ position: "relative", minHeight: 48 }}>
+      <div
+        className="flex align-items-center"
+        style={{ position: "relative", minHeight: 48 }}
+      >
         {/* Título centrado */}
         <h2
           className="m-0 text-center"
@@ -50,9 +42,9 @@ function HeaderBar() {
         {/* Botones a la derecha */}
         <div className="ml-auto flex gap-2">
           <Button
-            label="Crear receta"
-            icon="pi pi-plus"
-            onClick={() => nav("/crear")}
+            label="Home"
+            icon="pi pi-home"
+            onClick={() => nav("/home")}
             severity="success"
             outlined
             className="p-button-sm"
@@ -74,9 +66,19 @@ function HeaderBar() {
             className="p-button-sm"
           />
           <Button
+            label="Crear receta"
+            icon="pi pi-plus"
+            onClick={() => nav("/nueva")}
+            severity="success"
+            className="p-button-sm"
+          />
+          <Button
             label="Salir"
             icon="pi pi-sign-out"
-            onClick={() => nav("/login")}
+            onClick={() => {
+              localStorage.removeItem("userSession");
+              nav("/");
+            }}
             severity="danger"
             className="p-button-sm"
           />
@@ -86,7 +88,7 @@ function HeaderBar() {
   );
 }
 
-// ======= Página de Crear receta =======
+// ======= Página Crear Receta =======
 export default function Crear() {
   const nav = useNavigate();
   const toast = useRef(null);
@@ -95,7 +97,25 @@ export default function Crear() {
   const [descripcion, setDescripcion] = useState("");
   const [cuerpo, setCuerpo] = useState("");
   const [filePreview, setFilePreview] = useState("");
+  const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
+
+  // ✅ Cargar sesión desde localStorage
+  const [userSession, setUserSession] = useState(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("userSession");
+    if (stored) {
+      try {
+        setUserSession(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem("userSession");
+        nav("/");
+      }
+    } else {
+      nav("/");
+    }
+  }, [nav]);
 
   const onPickFile = (e) => {
     const file = e.target.files?.[0];
@@ -105,8 +125,17 @@ export default function Crear() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
+
+    if (!userSession?.id_usuario || !userSession?.token) {
+      toast.current.show({
+        severity: "error",
+        summary: "Sesión requerida",
+        detail: "Debes iniciar sesión antes de crear recetas.",
+      });
+      return;
+    }
 
     if (!titulo.trim() || !descripcion.trim() || !cuerpo.trim()) {
       toast.current.show({
@@ -117,53 +146,70 @@ export default function Crear() {
       return;
     }
 
-    const nueva = {
-      id_receta: Date.now(),
-      titulo,
-      descripcion,
-      cuerpo,
-      foto_url: filePreview || "https://via.placeholder.com/400x240?text=Sin+imagen",
-      username: "Tú",
+    setLoading(true);
+
+    const payload = {
+      id_usuario: userSession.id_usuario,
+      titulo: titulo.trim(),
+      descripcion: descripcion.trim(),
+      cuerpo: cuerpo.trim(),
+      foto_url: filePreview ? `${titulo.replace(/\s+/g, "_")}_foto.png` : "",
+      visibilidad: "public",
     };
 
-    const recetas = getMyRecipes();
-    recetas.unshift(nueva);
-    saveMyRecipes(recetas);
+    try {
+      const response = await fetch(API_ROUTES.RECIPES.CREATE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userSession.token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    toast.current.show({
-      severity: "success",
-      summary: "Receta creada",
-      detail: "Tu receta fue guardada y compartida.",
-    });
+      const data = await response.json();
+      console.log("📤 Respuesta al crear receta:", data);
 
-    // limpiar formulario
-    setTitulo("");
-    setDescripcion("");
-    setCuerpo("");
-    setFilePreview("");
+      if (!response.ok) throw new Error(data.message || "Error al guardar receta");
+
+      toast.current.show({
+        severity: "success",
+        summary: "Receta creada",
+        detail: "Tu receta fue guardada correctamente 🍳",
+      });
+
+      setTitulo("");
+      setDescripcion("");
+      setCuerpo("");
+      setFilePreview("");
+
+      setTimeout(() => nav("/home"), 1200);
+    } catch (error) {
+      console.error("❌ Error al guardar receta:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudo guardar la receta",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // 🔒 Protección visual si no hay sesión
+  if (!userSession) {
+    return (
+      <div className="flex justify-content-center align-items-center min-h-screen">
+        <p>Cargando sesión...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-2">
       <HeaderBar />
       <Toast ref={toast} />
 
-      {/* Título + botón volver */}
-      <div className="flex align-items-center justify-content-between mb-3">
-        <h3 className="m-0" style={{ color: "#2e7d32" }}>
-          Crear y compartir receta 🍳
-        </h3>
-        <Button
-          label="Volver a Home"
-          icon="pi pi-arrow-left"
-          onClick={() => nav("/home")}
-          className="p-button-sm"
-          severity="secondary"
-          outlined
-        />
-      </div>
-
-      {/* Formulario */}
       <Card
         className="shadow-4"
         style={{
@@ -172,6 +218,14 @@ export default function Crear() {
           borderRadius: 16,
           background: "rgba(255,255,255,0.96)",
         }}
+        title={
+          <div className="flex justify-content-between align-items-center">
+            <h3 style={{ color: "#2e7d32" }}>Crear y compartir receta 🍳</h3>
+            <small style={{ color: "#8d6e63" }}>
+              Usuario: <b>{userSession.username}</b> (ID: {userSession.id_usuario})
+            </small>
+          </div>
+        }
       >
         <form onSubmit={handleSave} className="flex flex-column gap-3">
           <span className="p-float-label">
@@ -240,9 +294,10 @@ export default function Crear() {
 
           <Button
             type="submit"
-            label="Guardar y compartir"
-            icon="pi pi-check"
+            label={loading ? "Guardando..." : "Guardar y compartir"}
+            icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
             severity="success"
+            disabled={loading}
           />
         </form>
       </Card>

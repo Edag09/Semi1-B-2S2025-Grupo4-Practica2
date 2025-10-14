@@ -22,14 +22,14 @@ router.get('/mis-recetas', verifyJWT, recipesController.getMyRecipes);
  * @desc    Crear una nueva receta
  * @access  Private
  */
-router.post('/', verifyJWT, recipesController.create);
+router.post('/crear', verifyJWT, recipesController.create);
 
 /**
  * @route   GET /recetas
  * @desc    Obtener todas las recetas públicas (con filtros)
  * @access  Public (opcional autenticación para ver privadas propias)
  */
-router.get('/', verifyJWTOptional, recipesController.getAll);
+router.get('/get_all', verifyJWTOptional, recipesController.getAll);
 
 /**
  * @route   GET /recetas/:id

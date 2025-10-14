@@ -24,20 +24,20 @@ router.get('/check/:recetaId', verifyJWT, favoritesController.checkFavorite);
  * @desc    Obtener favoritos del usuario
  * @access  Private
  */
-router.get('/', verifyJWT, favoritesController.getFavorites);
+router.get('/mis-favoritas', verifyJWT, favoritesController.getFavorites);
 
 /**
  * @route   POST /favoritos/:recetaId
  * @desc    Agregar receta a favoritos
  * @access  Private
  */
-router.post('/:recetaId', verifyJWT, favoritesController.addFavorite);
+router.post('/add/:recetaId', verifyJWT, favoritesController.addFavorite);
 
 /**
  * @route   DELETE /favoritos/:recetaId
  * @desc    Eliminar receta de favoritos
  * @access  Private
  */
-router.delete('/:recetaId', verifyJWT, favoritesController.removeFavorite);
+router.delete('/remove/:recetaId', verifyJWT, favoritesController.removeFavorite);
 
 module.exports = router;

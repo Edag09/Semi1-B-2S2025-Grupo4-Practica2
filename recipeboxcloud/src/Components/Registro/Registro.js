@@ -1,4 +1,4 @@
-// src/pages/Register.jsx (BETA: solo simulación)
+// src/Components/Registro/Registro.js (versión conectada al back)
 import React, { useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
@@ -6,17 +6,16 @@ import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { useNavigate } from "react-router-dom";
+import API_ROUTES from "../Config/apiRoutes"; // ✅ Importamos tus rutas
 
 export default function Register() {
   const toast = useRef(null);
   const navigate = useNavigate();
 
-  const [username, setUsername]   = useState("");
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
-  const [confirm, setConfirm]     = useState("");
-
-  // Solo preview local de imagen (no se sube)
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [filePreview, setFilePreview] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,10 +45,6 @@ export default function Register() {
       toast.current.show({ severity: "error", summary: "Contraseñas", detail: "No coinciden" });
       return false;
     }
-    if (!filePreview) {
-      toast.current.show({ severity: "info", summary: "Foto", detail: "Sube tu foto de perfil" });
-      return false;
-    }
     return true;
   };
 
@@ -57,14 +52,50 @@ export default function Register() {
     e.preventDefault();
     if (!validate()) return;
 
-    // Simulación: “procesando…”
     setLoading(true);
-    setTimeout(() => {
+
+    // Armamos la data que se enviará al backend
+    const payload = {
+      username: username.trim(),
+      email: email.trim(),
+      password: password.trim(),
+      foto_url: filePreview ? `${username}-profile.png` : "", // opcional
+      creado_en: new Date().toISOString().split("T")[0], // yyyy-mm-dd
+    };
+
+    try {
+      const response = await fetch(API_ROUTES.AUTH.REGISTER, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Error al registrar usuario");
+      }
+
+      const data = await response.json();
+
+      toast.current.show({
+        severity: "success",
+        summary: "Registro exitoso",
+        detail: `Bienvenido, ${data.username || username}!`,
+      });
+
+      setTimeout(() => navigate("/login"), 1200);
+    } catch (error) {
+      console.error("❌ Error en registro:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudo registrar el usuario",
+      });
+    } finally {
       setLoading(false);
-      toast.current.show({ severity: "success", summary: "Registro", detail: "Usuario simulado creado" });
-      // Redirige al login
-      setTimeout(() => navigate("/login"), 800);
-    }, 900);
+    }
   };
 
   return (
@@ -77,7 +108,7 @@ export default function Register() {
         title={
           <div className="text-center">
             <h2 style={{ color: "#2e7d32", margin: 0 }}>Crear cuenta</h2>
-            <small style={{ color: "#7cb342" }}>Versión beta (sin guardar) 🍋🥑</small>
+            <small style={{ color: "#7cb342" }}>Registro en línea 🌿</small>
           </div>
         }
         className="shadow-4"
@@ -89,92 +120,37 @@ export default function Register() {
         }}
       >
         <form onSubmit={handleRegister} className="flex flex-column gap-3">
-          {/* Username */}
           <span className="p-float-label">
-            <InputText
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full"
-              disabled={loading}
-              style={{ background: "#F9FFF2", borderColor: "#aed581" }}
-            />
+            <InputText id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full" disabled={loading} />
             <label htmlFor="username">Nombre de usuario</label>
           </span>
 
-          {/* Email */}
           <span className="p-float-label">
-            <InputText
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full"
-              disabled={loading}
-              style={{ background: "#F9FFF2", borderColor: "#aed581" }}
-            />
+            <InputText id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full" disabled={loading} />
             <label htmlFor="email">Correo electrónico</label>
           </span>
 
-          {/* Password */}
           <span className="p-float-label">
-            <Password
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              feedback={false}
-              toggleMask
-              inputClassName="w-full"
-              disabled={loading}
-              inputStyle={{ background: "#F9FFF2", borderColor: "#aed581" }}
-            />
+            <Password id="password" value={password} onChange={(e) => setPassword(e.target.value)} feedback={false} toggleMask inputClassName="w-full" disabled={loading} />
             <label htmlFor="password">Contraseña</label>
           </span>
 
-          {/* Confirm */}
           <span className="p-float-label">
-            <Password
-              id="confirm"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              feedback={false}
-              toggleMask
-              inputClassName="w-full"
-              disabled={loading}
-              inputStyle={{ background: "#F9FFF2", borderColor: "#aed581" }}
-            />
+            <Password id="confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} feedback={false} toggleMask inputClassName="w-full" disabled={loading} />
             <label htmlFor="confirm">Confirmar contraseña</label>
           </span>
 
-          {/* Foto (solo preview, sin upload) */}
           <div className="flex flex-column gap-2">
-            <small className="text-600">Foto de perfil (JPG/PNG) — solo vista previa</small>
+            <small className="text-600">Foto de perfil (opcional)</small>
             <input type="file" accept="image/*" onChange={onPickFile} disabled={loading} />
             {filePreview && (
-              <img
-                src={filePreview}
-                alt="preview"
-                style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 12, border: "1px solid #c5e1a5" }}
-              />
+              <img src={filePreview} alt="preview" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 12, border: "1px solid #c5e1a5" }} />
             )}
           </div>
 
-          <Button
-            type="submit"
-            label={loading ? "Procesando..." : "Registrarse"}
-            icon={loading ? "pi pi-spin pi-spinner" : "pi pi-user-plus"}
-            className="w-full"
-            disabled={loading}
-            style={{ background: "#66bb6a", border: "none", fontWeight: 600 }}
-          />
+          <Button type="submit" label={loading ? "Procesando..." : "Registrarse"} icon={loading ? "pi pi-spin pi-spinner" : "pi pi-user-plus"} className="w-full" disabled={loading} style={{ background: "#66bb6a", border: "none", fontWeight: 600 }} />
 
-          <Button
-            type="button"
-            label="Ya tengo cuenta"
-            className="p-button-text w-full"
-            onClick={() => navigate("/")}
-            disabled={loading}
-          />
+          <Button type="button" label="Ya tengo cuenta" className="p-button-text w-full" onClick={() => navigate("/")} disabled={loading} />
         </form>
       </Card>
     </div>
