@@ -63,6 +63,6 @@ const options = {
   cert: fs.readFileSync(path.join(sslPath, 'cert.pem')),
 };
 
-https.createServer(options, app).listen(8443, '0.0.0.0', () => {
-  console.log('✅ Servidor HTTPS corriendo en puerto 8443');
+https.createServer(options, app).listen(8080, '0.0.0.0', () => {
+  console.log('✅ Servidor HTTPS corriendo en puerto 8080');
 });
