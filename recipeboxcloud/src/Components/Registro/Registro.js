@@ -63,6 +63,7 @@ export default function Register() {
       if (file) {
         const formData = new FormData();
         formData.append("file", file);
+        console.log("📸 Archivo a subir:", file);
 
         const uploadRes = await fetch(API_ROUTES.AZURE_IMAGES.UPLOAD_PROFILE, {
           method: "POST",

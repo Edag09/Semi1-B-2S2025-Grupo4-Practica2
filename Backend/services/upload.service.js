@@ -1,11 +1,11 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const path = require('path');
-const { v4: uuidv4 } = import('uuid');
+const { v4: uuidv4 } = require('uuid');
 
 
 const accountName = process.env.AZURE_STORAGE_ACCOUNT;
 const accountKey = process.env.AZURE_STORAGE_KEY;
-const containerName = process.env.AZURE_STORAGE_CONTAINER || 'uploads';
+const containerName = process.env.AZURE_STORAGE_CONTAINER || 'recipebox-uploads';
 
 if (!accountName || !accountKey) {
   console.warn('Azure Storage credentials are not fully configured in .env');
