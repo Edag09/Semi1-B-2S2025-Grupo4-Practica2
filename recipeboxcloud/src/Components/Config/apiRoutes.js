@@ -6,8 +6,8 @@ const API_ROUTES={
     },
 
     AZURE_IMAGES:{
-        UPLOAD_PROFILE: '/azure/upload',
-        UPLOAD_RECIPE: '/azure/upload-recipe-image'
+        UPLOAD_PROFILE: 'http://4.155.115.159:8080/uploads/foto',
+        UPLOAD_RECIPE: 'http://4.155.115.159:8080/uploads/foto'
     },
 
     RECIPES:{

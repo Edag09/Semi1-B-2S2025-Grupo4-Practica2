@@ -20,11 +20,7 @@ function HeaderBar() {
         padding: "0.75rem 1rem",
       }}
     >
-      <div
-        className="flex align-items-center"
-        style={{ position: "relative", minHeight: 48 }}
-      >
-        {/* Título centrado */}
+      <div className="flex align-items-center" style={{ position: "relative", minHeight: 48 }}>
         <h2
           className="m-0 text-center"
           style={{
@@ -39,39 +35,11 @@ function HeaderBar() {
           RecipeBoxCloud
         </h2>
 
-        {/* Botones a la derecha */}
         <div className="ml-auto flex gap-2">
-          <Button
-            label="Home"
-            icon="pi pi-home"
-            onClick={() => nav("/home")}
-            severity="success"
-            outlined
-            className="p-button-sm"
-          />
-          <Button
-            label="Mis recetas"
-            icon="pi pi-book"
-            onClick={() => nav("/mis-recetas")}
-            severity="info"
-            outlined
-            className="p-button-sm"
-          />
-          <Button
-            label="Favoritas"
-            icon="pi pi-heart"
-            onClick={() => nav("/favoritos")}
-            severity="help"
-            outlined
-            className="p-button-sm"
-          />
-          <Button
-            label="Crear receta"
-            icon="pi pi-plus"
-            onClick={() => nav("/nueva")}
-            severity="success"
-            className="p-button-sm"
-          />
+          <Button label="Home" icon="pi pi-home" onClick={() => nav("/home")} severity="success" outlined className="p-button-sm" />
+          <Button label="Mis recetas" icon="pi pi-book" onClick={() => nav("/mis-recetas")} severity="info" outlined className="p-button-sm" />
+          <Button label="Favoritas" icon="pi pi-heart" onClick={() => nav("/favoritos")} severity="help" outlined className="p-button-sm" />
+          <Button label="Crear receta" icon="pi pi-plus" onClick={() => nav("/nueva")} severity="success" className="p-button-sm" />
           <Button
             label="Salir"
             icon="pi pi-sign-out"
@@ -97,12 +65,13 @@ export default function Crear() {
   const [descripcion, setDescripcion] = useState("");
   const [cuerpo, setCuerpo] = useState("");
   const [filePreview, setFilePreview] = useState("");
+  const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
 
-  // ✅ Cargar sesión desde localStorage
   const [userSession, setUserSession] = useState(null);
 
+  // ✅ Cargar sesión desde localStorage
   useEffect(() => {
     const stored = localStorage.getItem("userSession");
     if (stored) {
@@ -118,11 +87,12 @@ export default function Crear() {
   }, [nav]);
 
   const onPickFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
     const reader = new FileReader();
     reader.onload = (ev) => setFilePreview(ev.target?.result || "");
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(selected);
   };
 
   const handleSave = async (e) => {
@@ -148,16 +118,38 @@ export default function Crear() {
 
     setLoading(true);
 
-    const payload = {
-      id_usuario: userSession.id_usuario,
-      titulo: titulo.trim(),
-      descripcion: descripcion.trim(),
-      cuerpo: cuerpo.trim(),
-      foto_url: filePreview ? `${titulo.replace(/\s+/g, "_")}_foto.png` : "",
-      visibilidad: "public",
-    };
-
     try {
+      let fotoUrl = "";
+
+      // 🔹 1. Subimos la imagen si el usuario seleccionó una
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const uploadRes = await fetch(API_ROUTES.AZURE_IMAGES.UPLOAD_RECIPE, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Error al subir la imagen de la receta");
+        }
+
+        const uploadData = await uploadRes.json();
+        fotoUrl = uploadData.data?.url || "";
+      }
+
+      // 🔹 2. Creamos el payload con la URL de la imagen
+      const payload = {
+        id_usuario: userSession.id_usuario,
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        cuerpo: cuerpo.trim(),
+        foto_url: fotoUrl,
+        visibilidad: "public",
+      };
+
+      // 🔹 3. Llamada al backend para crear la receta
       const response = await fetch(API_ROUTES.RECIPES.CREATE, {
         method: "POST",
         headers: {
@@ -182,6 +174,7 @@ export default function Crear() {
       setDescripcion("");
       setCuerpo("");
       setFilePreview("");
+      setFile(null);
 
       setTimeout(() => nav("/home"), 1200);
     } catch (error) {
@@ -196,7 +189,6 @@ export default function Crear() {
     }
   };
 
-  // 🔒 Protección visual si no hay sesión
   if (!userSession) {
     return (
       <div className="flex justify-content-center align-items-center min-h-screen">
@@ -229,46 +221,23 @@ export default function Crear() {
       >
         <form onSubmit={handleSave} className="flex flex-column gap-3">
           <span className="p-float-label">
-            <InputText
-              id="titulo"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              className="w-full"
-            />
+            <InputText id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} className="w-full" />
             <label htmlFor="titulo">Título de la receta</label>
           </span>
 
           <span className="p-float-label">
-            <InputText
-              id="descripcion"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full"
-            />
+            <InputText id="descripcion" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className="w-full" />
             <label htmlFor="descripcion">Descripción corta</label>
           </span>
 
           <span className="p-float-label">
-            <InputTextarea
-              id="cuerpo"
-              rows={5}
-              value={cuerpo}
-              onChange={(e) => setCuerpo(e.target.value)}
-              className="w-full"
-            />
+            <InputTextarea id="cuerpo" rows={5} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} className="w-full" />
             <label htmlFor="cuerpo">Preparación / Detalles</label>
           </span>
 
-          {/* Subir imagen */}
           <div className="flex flex-column gap-2">
             <small className="text-600">Foto (opcional)</small>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={onPickFile}
-              style={{ display: "none" }}
-            />
+            <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} style={{ display: "none" }} />
             <Button
               type="button"
               label="Subir imagen"
