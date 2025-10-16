@@ -38,4 +38,6 @@ router.put('/profile', verifyJWT, authController.updateProfile);
  */
 router.put('/change-password', verifyJWT, authController.changePassword);
 
+// Por aquí debe de ir lo de la imagen de perfil en algún momento
+
 module.exports = router;

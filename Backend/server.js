@@ -11,6 +11,7 @@ const categoriesRoutes = require('./routes/categories.routes.js');
 const recipesRoutes = require('./routes/recipes.routes.js');
 const favoritesRoutes = require('./routes/favorites.routes.js');
 const commentsRoutes = require('./routes/comments.routes.js');
+const uploadRoutes = require('./routes/upload.routes.js');
 
 dotenv.config();
 const app = express();
@@ -40,6 +41,7 @@ app.use('/categorias', categoriesRoutes);
 app.use('/recetas', recipesRoutes);
 app.use('/favoritos', favoritesRoutes);
 app.use('/comentarios', commentsRoutes);
+app.use('/upload', uploadRoutes);
 // app.use('/users', usersRoutes);
 
 // Middleware de manejo de errores (debe estar después de las rutas)

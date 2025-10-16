@@ -1,4 +1,4 @@
-// src/Components/Registro/Registro.js (versión conectada al back)
+// src/Components/Registro/Registro.js
 import React, { useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
@@ -6,7 +6,7 @@ import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { useNavigate } from "react-router-dom";
-import API_ROUTES from "../Config/apiRoutes"; // ✅ Importamos tus rutas
+import API_ROUTES from "../Config/apiRoutes";
 
 export default function Register() {
   const toast = useRef(null);
@@ -16,15 +16,17 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState("");
   const [loading, setLoading] = useState(false);
 
   const onPickFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
     const reader = new FileReader();
     reader.onload = (ev) => setFilePreview(ev.target?.result || "");
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(selected);
   };
 
   const validate = () => {
@@ -54,21 +56,39 @@ export default function Register() {
 
     setLoading(true);
 
-    // Armamos la data que se enviará al backend
-    const payload = {
-      username: username.trim(),
-      email: email.trim(),
-      password: password.trim(),
-      foto_url: filePreview ? `${username}-profile.png` : "", // opcional
-      creado_en: new Date().toISOString().split("T")[0], // yyyy-mm-dd
-    };
-
     try {
+      let fotoUrl = "";
+
+      // 🔹 1. Si el usuario seleccionó una imagen, la subimos primero
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const uploadRes = await fetch(API_ROUTES.AZURE_IMAGES.UPLOAD_PROFILE, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Error al subir la imagen de perfil");
+        }
+
+        const uploadData = await uploadRes.json();
+        fotoUrl = uploadData.data?.url || "";
+      }
+
+      // 🔹 2. Luego mandamos el registro con el link recibido del backend
+      const payload = {
+        username: username.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        foto_url: fotoUrl,
+        creado_en: new Date().toISOString().split("T")[0],
+      };
+
       const response = await fetch(API_ROUTES.AUTH.REGISTER, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -78,14 +98,13 @@ export default function Register() {
       }
 
       const data = await response.json();
-
       toast.current.show({
         severity: "success",
         summary: "Registro exitoso",
         detail: `Bienvenido, ${data.username || username}!`,
       });
 
-      setTimeout(() => navigate("/login"), 1200);
+      setTimeout(() => navigate("/"), 1200);
     } catch (error) {
       console.error("❌ Error en registro:", error);
       toast.current.show({
@@ -148,7 +167,14 @@ export default function Register() {
             )}
           </div>
 
-          <Button type="submit" label={loading ? "Procesando..." : "Registrarse"} icon={loading ? "pi pi-spin pi-spinner" : "pi pi-user-plus"} className="w-full" disabled={loading} style={{ background: "#66bb6a", border: "none", fontWeight: 600 }} />
+          <Button
+            type="submit"
+            label={loading ? "Procesando..." : "Registrarse"}
+            icon={loading ? "pi pi-spin pi-spinner" : "pi pi-user-plus"}
+            className="w-full"
+            disabled={loading}
+            style={{ background: "#66bb6a", border: "none", fontWeight: 600 }}
+          />
 
           <Button type="button" label="Ya tengo cuenta" className="p-button-text w-full" onClick={() => navigate("/")} disabled={loading} />
         </form>
