@@ -1,6 +1,6 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const path = require('path');
-const { v4: uuidv4 } = await import('uuid');
+const { v4: uuidv4 } = require('uuid');
 
 
 const accountName = process.env.AZURE_STORAGE_ACCOUNT;
