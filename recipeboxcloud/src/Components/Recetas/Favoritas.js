@@ -74,7 +74,7 @@ function HeaderBar() {
   );
 }
 
-// ======= Tarjeta de receta favorita =======
+// ======= Tarjeta de receta (igual a Home) =======
 function FavoriteCard({ recipe, onRemove }) {
   const header = recipe.foto_url ? (
     <img
@@ -82,23 +82,17 @@ function FavoriteCard({ recipe, onRemove }) {
       alt={recipe.titulo}
       style={{ width: "100%", height: 180, objectFit: "cover" }}
     />
-  ) : (
-    <img
-      src="https://via.placeholder.com/400x240?text=Sin+imagen"
-      alt="sin-imagen"
-      style={{ width: "100%", height: 180, objectFit: "cover" }}
-    />
-  );
+  ) : null;
 
   const footer = (
     <div className="flex justify-content-between align-items-center">
-      <small className="text-600">{recipe.username || "Autor"}</small>
+      <small className="text-600">{recipe.usuario?.username || "Autor"}</small>
       <Button
-        icon="pi pi-trash"
-        label="Quitar"
-        severity="danger"
-        outlined
+        icon="pi pi-heart-fill"
+        label="Quitar favorito"
         onClick={() => onRemove(recipe.id_receta)}
+        size="small"
+        severity="danger"
       />
     </div>
   );
@@ -109,7 +103,7 @@ function FavoriteCard({ recipe, onRemove }) {
       subTitle={recipe.descripcion}
       header={header}
       footer={footer}
-      className="m-2 shadow-3"
+      className="m-2"
       style={{ width: 300, borderRadius: 14 }}
     />
   );
@@ -158,11 +152,14 @@ export default function Favoritas() {
         if (!response.ok)
           throw new Error(data.message || "Error al obtener favoritas");
 
-        const favs = Array.isArray(data)
-          ? data
-          : Array.isArray(data.data)
-          ? data.data
-          : [];
+        // ✅ Aquí mapeamos para extraer la receta del objeto favorito
+        const favs =
+          Array.isArray(data?.data) && data.data.length > 0
+            ? data.data.map((f) => ({
+                ...f.receta,
+                id_favorito: f.id_favorito,
+              }))
+            : [];
 
         setFavoritas(favs);
       } catch (error) {
@@ -192,14 +189,10 @@ export default function Favoritas() {
       );
 
       const data = await response.json();
-      console.log("📦 Respuesta al quitar favorito:", data);
-
       if (!response.ok)
         throw new Error(data.message || "Error al eliminar favorito");
 
-      setFavoritas((prev) =>
-        prev.filter((r) => r.id_receta !== id_receta)
-      );
+      setFavoritas((prev) => prev.filter((r) => r.id_receta !== id_receta));
     } catch (error) {
       console.error("❌ Error al eliminar favorito:", error);
       alert("No se pudo eliminar el favorito.");

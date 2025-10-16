@@ -89,7 +89,7 @@ function RecipeCard({ recipe, onToggleFavorite }) {
 
   const footer = (
     <div className="flex justify-content-between align-items-center">
-      <small className="text-600">{recipe.username || "Autor"}</small>
+      <small className="text-600">{recipe.usuario?.username || "Autor"}</small>
       <Button
         icon={fav ? "pi pi-heart-fill" : "pi pi-heart"}
         label={fav ? "Quitar" : "Favorito"}
